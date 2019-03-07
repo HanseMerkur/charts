@@ -1,0 +1,134 @@
+# Default values for synapse.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# All Matrix Synapse options 
+synapse:
+  # (mandatory), the server public hostname.
+  server_name: "matrix.org"
+  # (mandatory, yes or no), enable anonymous statistics reporting back to the
+  # Matrix project which helps us to get funding.
+  report_stats: "no"
+  # set this variable to enable registration on the Synapse instance.
+  enable_registration: false
+	# secret for registrering users if registration is disable
+  registration_shared_secret: "example"
+  # set this variable to allow guest joining this server
+  allow_guest: false
+  # the event cache size [default 10K]
+  event_cache_size: "10K"
+  # set this variable to change the max upload size [default 10M]
+  max_upload_size: "10M"
+  # set this variable to disable TLS in Synapse (use this if you run your own
+  # TLS-capable reverse proxy).
+  no_tls: false
+  # set this to enable the ACME certificate renewal support
+  acme: false
+  # Enable the TURN feature set for Synapse
+  turn:
+    enabled: false
+    # set this variable to the coma-separated list of TURN uris to enable TURN for this homeserver
+    uris: "turn1.example,turn2.example"
+    # set this to the TURN shared secret if required.
+    secret: "example"
+  # Enable the ReCaptcha feature set for Synapse
+  recaptcha:
+    enabled: false
+    # set this variable to the recaptcha private key in order to enable recaptcha upon registration
+    public_key: "example"
+    # set this variable to the recaptcha public key in order to enable recaptcha upon registration
+    private_key: "example"
+  # Enable the SMTP feature set for Synapse
+  smtp:
+    enabled: false
+    # hostname to the mail server
+    host: "smtp.example"
+    # TCP port for accessing the mail server [default 25].
+    port: 25
+    # username for authenticating against the mail server if any
+    user: "smtp"
+    # password for authenticating against the mail server if any
+    password: "password"
+
+replicaCount: 1
+
+image:
+  repository: matrixdotorg/synapse
+  tag: v0.99.2-py3
+  pullPolicy: IfNotPresent
+
+service:
+  name: Synapse
+  type: ClusterIP
+  port: 8009
+
+ingress:
+  enabled: false
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  path: /
+  hosts:
+    - chart-example.local
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+persistence:
+  enabled: true
+  ## synapse data Persistent Volume access modes
+  ## Must match those of existing PV or dynamic provisioner
+  ## Ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+  ##
+  accessModes:
+    - ReadWriteOnce
+  annotations: {}
+  existingClaim: ""
+  size: 2Gi
+  ## A manually managed Persistent Volume and Claim
+  ## Requires persistence.enabled: true
+  ## If defined, PVC must be created manually before volume will be bound
+  # existingClaim:
+
+  ## database data Persistent Volume Storage Class
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  # storageClass: "-"
+
+podAnnotations: {}
+
+extraVars: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+## Configuration values for the postgresql dependency.
+## ref: https://github.com/kubernetes/charts/blob/master/stable/postgresql/README.md
+##
+postgresql:
+  install: true
+  imageTag: "9.6.2"
+  postgresUser: "synapse"
+  postgresDatabase: "synapse"
+  ## Default: random 10 character string
+  # postgresPassword:

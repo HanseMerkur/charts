@@ -1,0 +1,143 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "synapse.fullname" . }}
+  labels:
+    app: {{ template "synapse.name" . }}
+    chart: {{ template "synapse.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "synapse.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "synapse.name" . }}
+        release: {{ .Release.Name }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8009
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: 8009
+            initialDelaySeconds: 120
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 8009
+            initialDelaySeconds: 30
+          env:
+            - name: SYNAPSE_SERVER_NAME
+              value: {{ .Values.synapse.server_name }}
+            - name: SYNAPSE_REPORT_STATS
+              value: {{ .Values.synapse.report_stats }}
+            - name: SYNAPSE_ENABLE_REGISTRATION
+              value: {{ .Values.synapse.enable_registration }}
+            - name: SYNAPSE_REGISTRATION_SHARED_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "synapse.fullname" }}
+                  key: registrationSharedSecret
+            - name: SYNAPSE_ALLOW_GUEST
+              value: {{ .Values.synapse.allow_guest }}
+            - name: SYNAPSE_MAX_UPLOAD_SIZE
+              value: {{ .Values.synapse.max_upload_size }}
+            - name: SYNAPSE_EVENT_CACHE_SIZE
+              value: {{ .Values.synapse.event_cache_size}}
+            - name: SYNAPSE_NO_TLS
+              value: {{ .Values.synapse.no_tls }}
+            - name: SYNAPSE_ACME
+              value: {{ .Values.synapse.acme }}
+            {{- if .Values.synapse.turn.enabled }}
+            - name: SYNAPSE_TURN_URIS
+              value: {{ .Values.synapse.turn.uris }}
+            - name: SYNAPSE_TURN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "synapse.fullname" }}
+                  key: turnSecret
+            {{- end }
+            {{- if .Values.synapse.recaptcha.enabled }}
+            - name: SYNAPSE_RECAPTCHA_PUBLIC_KEY
+              value: {{ .Values.synapse.recaptcha.public_key}}
+            - name: SYNAPSE_RECAPTCHA_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "synapse.fullname" }}
+                  key: recaptchaPrivateKey
+            {{- end }}
+            {{- if .Values.synapse.smtp.enabled }}
+            - name: SYNAPSE_SMTP_HOST
+              values: {{ .Values.synapse.smtp.host }}
+            - name: SYNAPSE_SMTP_PORT
+              values: {{ .Values.synapse.smtp.host }}
+            - name: SYNAPSE_SMTP_USER
+              values: {{ .Values.synapse.smtp.host }}
+            - name: SYNAPSE_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "synapse.fullname" }}
+                  key: smtpPassword
+            {{- end }}
+            - name: POSTGRES_PASSWORD
+              {{- if .Values.postgresql.install }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "synapse.postgresql.fullname" . }}
+                  key: postgres-password
+              {{- else }}
+              value: {{ .Values.postgresql.postgresPassword }}
+              {{- end }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgreqsql.postgresUser }}
+            - name: POSTGRES_HOST
+              value: {{ template "synapse.database.host" }}
+            {{- if .Values.extraVars }}
+{{ toYaml .Values.extraVars | indent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: "/config"
+            - name: media
+              mountPath: "/data/media"
+            - name: uploads
+              mountPath: "/data/uploads"
+            - name: data
+              mountPath: "/data"
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+      volumes:
+        - name: data
+        {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.persistence.existingClaim }}{{ .Values.persistence.existingClaim }}{{- else }}{{ template "synapse.fullname" . }}{{- end }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
