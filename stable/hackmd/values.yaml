@@ -39,6 +39,9 @@ resources: {}
   #  cpu: 100m
   #  memory: 128Mi
 
+securityContext:
+  runAsUser: 10000
+
 persistence:
   enabled: true
   ## hackmd data Persistent Volume access modes
@@ -74,13 +77,20 @@ tolerations: []
 
 affinity: {}
 
+## Add additional volumes and mounts, e. g. for saml cert
+extraVolumes: |
+extraVolumeMounts: |
+
 ## Configuration values for the postgresql dependency.
 ## ref: https://github.com/kubernetes/charts/blob/master/stable/postgresql/README.md
 ##
 postgresql:
-  install: true
-  imageTag: "9.6.2"
-  postgresUser: "hackmd"
-  postgresDatabase: "hackmd"
-  ## Default: random 10 character string
-  # postgresPassword:
+  enabled: true
+  postgresqlUsername: "hackmd"
+  postgresqlDatabase: "hackmd"
+## Default: random 10 character string
+# postgresqlPassword:
+
+  volumePermissions:
+    securityContext:
+      runAsUser: 1001

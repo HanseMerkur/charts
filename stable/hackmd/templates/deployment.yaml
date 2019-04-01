@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "hackmd.fullname" . }}
@@ -42,14 +42,22 @@ spec:
               port: 3000
             initialDelaySeconds: 30
           env:
+            - name: CMD_DB_HOST
+              value: {{ template "hackmd.postgresql.fullname" . }}
+            - name: CMD_DB_PORT
+              value: "{{ .Values.postgresql.service.port }}"
+            - name: CMD_DB_USER
+              value: {{ .Values.postgresql.postgresqlUsername }}
+            - name: CMD_DB_DATABASE
+              value: {{ .Values.postgresql.postgresqlDatabase }}
             - name: CMD_DB_PASSWORD
-              {{- if .Values.postgresql.install }}
+              {{- if .Values.postgresql.enabled }}
               valueFrom:
                 secretKeyRef:
                   name: {{ template "hackmd.postgresql.fullname" . }}
-                  key: postgres-password
+                  key: postgresql-password
               {{- else }}
-              value: {{ .Values.postgresql.postgresPassword }}
+              value: {{ .Values.postgresql.postgresqlPassword }}
               {{- end }}
             - name: CMD_SESSION_SECRET
               valueFrom:
@@ -57,17 +65,24 @@ spec:
                   name: {{ template "hackmd.fullname" . }}
                   key: sessionSecret
             - name: CMD_DB_URL
-              value: postgres://{{ .Values.postgresql.postgresUser }}:$(CMD_DB_PASSWORD)@{{ template "hackmd.database.host" . }}:5432/{{ .Values.postgresql.postgresDatabase }}
+              value: "postgres://$(CMD_DB_USER):$(CMD_DB_PASSWORD)@$(CMD_DB_HOST):$(CMD_DB_PORT)/$(CMD_DB_DATABASE)"
             - name: HMD_DB_URL
-              value: postgres://{{ .Values.postgresql.postgresUser }}:$(CMD_DB_PASSWORD)@{{ template "hackmd.database.host" . }}:5432/{{ .Values.postgresql.postgresDatabase }}
+              value: $(CMD_DB_URL)
             {{- if .Values.extraVars }}
 {{ toYaml .Values.extraVars | indent 12 }}
             {{- end }}
           volumeMounts:
             - name: data
               mountPath: "/hackmd/public/uploads"
+      {{- with .Values.extraVolumeMounts }}
+{{ tpl . $ | indent 12 }}
+      {{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.securityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+    {{- end }}
     {{- with .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
@@ -88,3 +103,6 @@ spec:
         {{- else }}
           emptyDir: {}
         {{- end }}
+    {{- with .Values.extraVolumes }}
+{{ tpl . $ | indent 8 }}
+    {{- end }}
