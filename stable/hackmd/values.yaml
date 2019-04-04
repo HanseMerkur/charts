@@ -40,7 +40,7 @@ resources: {}
   #  memory: 128Mi
 
 securityContext:
-  runAsUser: 10000
+  runAsUser: 10000 # default codimd container uid
 
 persistence:
   enabled: true
@@ -69,6 +69,9 @@ persistence:
 
 podAnnotations: {}
 
+## Additional environment variables can be set to configure CodiMD
+## Storage and Auth providers are available in separate blocks below
+## Ref: https://github.com/codimd/server/blob/master/docs/configuration-env-vars.md
 extraVars: []
 
 nodeSelector: {}
@@ -77,7 +80,116 @@ tolerations: []
 
 affinity: {}
 
-## Add additional volumes and mounts, e. g. for saml cert
+
+## Storage options. Only one can be active at any time
+storage:
+  # upload_type can be filesystem, s3, minio, imgur
+  # default: filesystem
+  # all but the default require additional configuration below
+  upload_type: "filesystem"
+  s3:
+    enabled: false
+    #region: ""
+    #bucket: ""
+    #amazon:
+      #access_key_id: ""
+      #secret_access_key: ""
+    #minio:
+      #access_key: ""
+      #secret_key: ""
+      #endpoint: "minio"
+      #port: 9000
+      #secure: true
+  imgur:
+    enabled: false
+    #clientid : ""
+
+
+## All the different Auth providers
+## E-Mail login/registration can be optionally left on
+## even when using other providers
+## More than one provider can be active at any time
+auth:
+  email:
+    enabled: true
+    allow_register: true
+
+  oauth2:
+    enabled: false
+    #user_profile_url: "https://example.com"
+    #user_profile_username_attr: "name"
+    #user_profile_display_name_attr: "display-name"
+    #user_profile_email_attr: "email"
+    #token_url: "https://example.com"
+    #authorization_url: "https://example.com"
+    #client_id: "abcedf0123456789"
+    #client_secret: "abcedf0123456789"
+    #providername: "My institution"
+
+  saml:
+    enabled: false
+    #idpssourl: "https://idp.example.com/sso"
+    #idpcert: "/path/to/cert.pem"
+    #issuer: ""
+    #identifierformat: ""
+    #groupattribute: "memberOf"
+    #requiredgroups: "codimd-users"
+    #externalgroups: "Temporary-staff"
+    #attribute_id: "sAMAccountName"
+    #attribute_username: "mailNickname"
+    #attribute_email: "mail"
+
+  ldap:
+    enabled: false
+    #url: "ldap://example.com"
+    #binddn: ""
+    #bindcredentials: ""
+    #searchbase: "o=users,dc=example,dc=com"
+    #searchfilter: "(uid={{username}})"
+    #searchattributes: "displayName, mail"
+    #useridfield: "uidNumber" # or uid or sAMAccountName
+    #usernamefield: ""
+    #tls_ca: "server-cert.pem, root.pem"
+    #providername: "My institution"
+
+  openid:
+    enabled: false
+    ## provider can be one of Dropbox, Facebook, GitHub, GitLab, Mattermost, Google, Twitter
+    ## Gitlab and Mattermost require additional configuration below
+    dropbox:
+      enabled: false
+    #  clientid: ""
+    #  clientsecret: ""
+    facebook:
+      enabled: false
+    #  clientid: ""
+    #  clientsecret: ""
+    github:
+      enabled: false
+    #  clientid: ""
+    #  clientsecret: ""
+    google:
+      enabled: false
+    #  clientid: ""
+    #  clientsecret: ""
+    twitter:
+      enabled: false
+    #  clientid: ""
+    #  clientsecret: ""
+    gitlab:
+      enabled: false
+    #  baseurl: "https://gitlab.example.org"
+    #  clientid: ""
+    #  clientsecret: ""
+    #  scope: "api"
+    #  version: "v3"
+    mattermost:
+      enabled: false
+    #  baseurl: "https://mattermost.example.org"
+    #  clientid: ""
+    #  clientsecret: ""
+
+## Add additional volumes and mounts, e. g. for SAML certificates
 extraVolumes: |
 extraVolumeMounts: |
 
@@ -88,9 +200,15 @@ postgresql:
   enabled: true
   postgresqlUsername: "hackmd"
   postgresqlDatabase: "hackmd"
+## Warning:
+## Helm breaks a generated secret on every upgrade run:
+## Ref: https://github.com/helm/charts/issues/5167
 ## Default: random 10 character string
 # postgresqlPassword:
 
+  ## stable/postgresql requires the init container run to set correct permissions
+  ## for the data directory. But it can run as the postgresql container uid as
+  ## the fsUser already set the correct ownership on mount
   volumePermissions:
     securityContext:
-      runAsUser: 1001
+      runAsUser: 1001 # postgresql default container uid

@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    hansemerkur.de/scsmgmt: networkpolicy
+  name: allow-all-in-namespace
+spec:
+  egress:
+  - to:
+    - namespaceSelector: {}
+  ingress:
+  - from:
+    - namespaceSelector: {}
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    hansemerkur.de/scsmgmt: networkpolicy
+  name: allow-all-ingress
+spec:
+  ingress:
+  - {}
+  podSelector: {}
+  policyTypes:
+  - Ingress
